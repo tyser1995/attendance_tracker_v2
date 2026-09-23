@@ -1,0 +1,108 @@
+// Prisma's datasource `provider` is a static string baked in at `prisma generate`
+// time — only `url` can come from an env var. This app runs SQLite locally
+// (`DATABASE_URL="file:..."`) and Postgres in production (Supabase), so the schema's
+// provider has to be rewritten to match DATABASE_URL before each generate — see
+// scripts/prisma-provider.js.
+generator client {
+  provider = "prisma-client-js"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  STAFF
+}
+
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String
+  role         Role     @default(STAFF)
+
+  // Phase 2 — RFID/barcode and face-recognition login, not used yet.
+  cardId         String? @unique
+  faceDescriptor String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+model Course {
+  id         String @id @default(cuid())
+  courseCode String @unique
+  courseName String
+  yearLevel  String @default("")
+
+  students Student[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("courses")
+}
+
+model Student {
+  id         String  @id @default(cuid())
+  idNumber   String
+  firstName  String
+  lastName   String
+  middleName String?
+  dob        String?
+  sex        String?
+  isDeleted  Boolean @default(false)
+
+  courseId String?
+  course   Course? @relation(fields: [courseId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([idNumber])
+  @@map("students")
+}
+
+// status: 1 = AM Time In, 2 = AM Time Out, 3 = PM Time In, 4 = PM Time Out.
+// Each student ID scan advances to the next status for the current day.
+model Attendance {
+  id          String  @id @default(cuid())
+  idNumber    String
+  name        String  @default("")
+  timeIn      String?
+  timeOut     String?
+  createdDate String
+  status      Int     @default(1)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([createdDate])
+  @@index([idNumber])
+  @@map("attendances")
+}
+
+model IdPattern {
+  id      String @id @default(cuid())
+  pattern String @unique
+  regex   String
+  status  String @default("active")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("id_patterns")
+}
+
+// Single-row app settings.
+model Settings {
+  id          Int    @id @default(1)
+  initialPage String @default("login")
+
+  @@map("settings")
+}
