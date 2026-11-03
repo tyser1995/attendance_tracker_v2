@@ -4,11 +4,13 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import type { Role } from '@/app/generated/prisma'
+import { NavIcon } from './NavIcon'
 import { visibleNavItems } from './navItems'
 import { cn } from '@/lib/utils/cn'
-import { Menu, X, CalendarCheck2 } from 'lucide-react'
+import { Menu, X } from 'lucide-react'
+import { AppLogo } from './AppLogo'
 
-export function MobileNav({ role }: { role: Role }) {
+export function MobileNav({ role, logoUrl }: { role: Role; logoUrl: string | null }) {
   const pathname = usePathname()
   const items = visibleNavItems(role)
   const [open, setOpen] = useState(false)
@@ -51,9 +53,7 @@ export function MobileNav({ role }: { role: Role }) {
           <div className="absolute inset-y-0 left-0 flex w-72 max-w-[80vw] flex-col bg-white shadow-xl">
             <div className="flex h-14 items-center justify-between border-b border-zinc-100 px-4">
               <span className="flex items-center gap-2">
-                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-600 text-white">
-                  <CalendarCheck2 size={16} />
-                </span>
+                <AppLogo logoUrl={logoUrl} />
                 <span className="font-semibold text-zinc-900">Menu</span>
               </span>
               <button
@@ -68,7 +68,6 @@ export function MobileNav({ role }: { role: Role }) {
             <ul className="flex-1 space-y-0.5 overflow-y-auto p-3">
               {items.map((item) => {
                 const active = pathname === item.href || pathname.startsWith(item.href + '/')
-                const Icon = item.icon
                 return (
                   <li key={item.href}>
                     <Link
@@ -78,7 +77,7 @@ export function MobileNav({ role }: { role: Role }) {
                         active ? 'bg-indigo-50 text-indigo-700' : 'text-zinc-600 hover:bg-zinc-100'
                       )}
                     >
-                      <Icon size={18} className={active ? 'text-indigo-600' : 'text-zinc-400'} />
+                      <NavIcon icon={item.icon} className={active ? 'text-indigo-600' : 'text-zinc-400'} />
                       {item.label}
                     </Link>
                   </li>

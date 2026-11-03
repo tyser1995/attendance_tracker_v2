@@ -2,6 +2,7 @@ import NextAuth from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
 import { prisma } from '@/lib/prisma/client'
 import { verifyPassword } from '@/lib/auth/password'
+import { logActivity } from '@/lib/logs/log'
 import type { Role } from '@/app/generated/prisma'
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -19,15 +20,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (typeof username !== 'string' || typeof password !== 'string') return null
 
         const user = await prisma.user.findUnique({ where: { username } })
-        if (!user) return null
+        const valid = user ? await verifyPassword(password, user.passwordHash) : false
+        if (!user || !valid) {
+          await logActivity({ action: 'login_failed', username })
+          return null
+        }
 
-        const valid = await verifyPassword(password, user.passwordHash)
-        if (!valid) return null
-
+        await logActivity({ action: 'login', username: user.username, role: user.role })
         return { id: user.id, username: user.username, role: user.role }
       },
     }),
   ],
+  events: {
+    async signOut(message) {
+      const token = 'token' in message ? message.token : null
+      await logActivity({ action: 'logout', username: token?.username as string | undefined, role: token?.role as string | undefined })
+    },
+  },
   callbacks: {
     jwt({ token, user }) {
       if (user) {

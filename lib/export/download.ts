@@ -2,17 +2,24 @@ export type AttendanceExportRow = {
   date: string
   idNumber: string
   name: string
+  course: string
+  year: string
   status: string
   timeIn: string
   timeOut: string
 }
 
+const EXPORT_HEADER = ['Date', 'Student ID', 'Name', 'Course', 'Year', 'Status', 'Time In', 'Time Out']
+
+function exportCells(r: AttendanceExportRow): string[] {
+  return [r.date, r.idNumber, r.name, r.course, r.year, r.status, r.timeIn, r.timeOut]
+}
+
 export function toCsv(rows: AttendanceExportRow[]): string {
-  const header = ['Date', 'Student ID', 'Name', 'Status', 'Time In', 'Time Out']
   const escape = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v)
-  const lines = [header.join(',')]
+  const lines = [EXPORT_HEADER.join(',')]
   for (const r of rows) {
-    lines.push([r.date, r.idNumber, r.name, r.status, r.timeIn, r.timeOut].map(escape).join(','))
+    lines.push(exportCells(r).map(escape).join(','))
   }
   return lines.join('\n')
 }
@@ -39,8 +46,8 @@ export async function downloadPdf(rows: AttendanceExportRow[], filename: string,
 
   autoTable(doc, {
     startY: 22,
-    head: [['Date', 'Student ID', 'Name', 'Status', 'Time In', 'Time Out']],
-    body: rows.map((r) => [r.date, r.idNumber, r.name, r.status, r.timeIn, r.timeOut]),
+    head: [EXPORT_HEADER],
+    body: rows.map(exportCells),
     styles: { fontSize: 8 },
   })
 

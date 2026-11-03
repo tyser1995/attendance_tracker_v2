@@ -9,6 +9,6 @@ export function isAdmin(role: Role): boolean {
 }
 
 // Paths by minimum required role, mirroring the Flutter app's config/router.dart.
-export const SUPER_ADMIN_PATHS = ['/settings', '/users']
+export const SUPER_ADMIN_PATHS = ['/settings', '/users', '/logs']
 export const ADMIN_PATHS = ['/students', '/courses', '/patterns', '/reports']
 export const PUBLIC_PATHS = ['/login']

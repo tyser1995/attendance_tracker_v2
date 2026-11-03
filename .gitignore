@@ -41,6 +41,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# scheduled backups (contain password hashes and student data)
+/backups/
+
 # prisma
 /app/generated/prisma
 prisma/*.db

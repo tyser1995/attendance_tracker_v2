@@ -9,6 +9,7 @@ import {
   FileBarChart,
   UserCog,
   Settings,
+  ScrollText,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -28,6 +29,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/patterns', label: 'ID Patterns', icon: Regex, minRole: 'ADMIN' },
   { href: '/reports', label: 'Reports', icon: FileBarChart, minRole: 'ADMIN' },
   { href: '/users', label: 'User Management', icon: UserCog, minRole: 'SUPER_ADMIN' },
+  { href: '/logs', label: 'Logs', icon: ScrollText, minRole: 'SUPER_ADMIN' },
   { href: '/settings', label: 'Settings', icon: Settings, minRole: 'SUPER_ADMIN' },
 ]
 

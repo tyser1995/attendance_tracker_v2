@@ -1,9 +1,13 @@
+import { Suspense } from 'react'
 import { auth } from '@/auth'
+import { ActivityTracker } from '@/components/logs/ActivityTracker'
+import { getSettings } from '@/lib/settings/getSettings'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Topbar } from '@/components/layout/Topbar'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await auth()
+  const { appName, logoUrl } = await getSettings()
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -13,7 +17,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       >
         Skip to content
       </a>
-      <Topbar session={session} />
+      {session && (
+        <Suspense fallback={null}>
+          <ActivityTracker />
+        </Suspense>
+      )}
+      <Topbar session={session} appName={appName} logoUrl={logoUrl} />
       <div className="flex flex-1">
         {session && <Sidebar role={session.user.role} />}
         <main id="main-content" className="flex-1 bg-zinc-50/60 p-4 sm:p-6 lg:p-8">

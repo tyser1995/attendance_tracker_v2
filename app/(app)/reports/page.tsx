@@ -1,6 +1,7 @@
+import Form from 'next/form'
 import { prisma } from '@/lib/prisma/client'
 import { Input, Label } from '@/components/ui/Input'
-import { Button } from '@/components/ui/Button'
+import { FilterButton } from '@/components/ui/FilterButton'
 import { ReportsView, type PerStudentRow, type DailyCount } from '@/components/reports/ReportsView'
 import { statusText } from '@/lib/attendance/logAttendance'
 import { todayStr, formatDateLabel } from '@/lib/utils/date'
@@ -19,6 +20,16 @@ export default async function ReportsPage({
     where: { createdDate: { gte: from, lte: to } },
     orderBy: [{ createdDate: 'asc' }, { idNumber: 'asc' }],
   })
+
+  // Attendance rows have no relation to Student, so match on idNumber. Soft-deleted
+  // students sort first and get overwritten by an active student with the same ID, but
+  // still resolve on their own so past attendance keeps its course. Loads every student
+  // rather than filtering by ID: a wide date range can exceed the database's parameter limit.
+  const students = await prisma.student.findMany({
+    select: { idNumber: true, course: { select: { courseCode: true, yearLevel: true } } },
+    orderBy: { isDeleted: 'desc' },
+  })
+  const courseByIdNumber = new Map(students.map((s) => [s.idNumber, s.course]))
 
   const perStudentMap = new Map<string, PerStudentRow>()
   for (const r of records) {
@@ -40,6 +51,8 @@ export default async function ReportsPage({
     date: r.createdDate,
     idNumber: r.idNumber,
     name: r.name,
+    course: courseByIdNumber.get(r.idNumber)?.courseCode ?? '',
+    year: courseByIdNumber.get(r.idNumber)?.yearLevel ?? '',
     status: statusText(r.status),
     timeIn: r.timeIn ?? '',
     timeOut: r.timeOut ?? '',
@@ -49,7 +62,7 @@ export default async function ReportsPage({
     <div>
       <h1 className="mb-4 text-2xl font-semibold text-zinc-900">Reports</h1>
 
-      <form className="mb-6 flex flex-wrap items-end gap-3">
+      <Form action="" className="mb-6 flex flex-wrap items-end gap-3">
         <div>
           <Label htmlFor="from">From</Label>
           <Input id="from" name="from" type="date" defaultValue={from} className="w-44" />
@@ -58,10 +71,8 @@ export default async function ReportsPage({
           <Label htmlFor="to">To</Label>
           <Input id="to" name="to" type="date" defaultValue={to} className="w-44" />
         </div>
-        <Button type="submit" variant="secondary">
-          Apply
-        </Button>
-      </form>
+        <FilterButton>Apply</FilterButton>
+      </Form>
 
       <ReportsView perStudent={perStudent} dailyCounts={dailyCounts} exportRows={exportRows} from={from} to={to} />
     </div>

@@ -1,7 +1,8 @@
+import Form from 'next/form'
 import { prisma } from '@/lib/prisma/client'
 import { Input, Label } from '@/components/ui/Input'
 import { Badge } from '@/components/ui/Badge'
-import { Button } from '@/components/ui/Button'
+import { FilterButton } from '@/components/ui/FilterButton'
 import { DataTable, type DataTableRow } from '@/components/ui/DataTable'
 import { statusText } from '@/lib/attendance/logAttendance'
 import { todayStr, formatDateLong } from '@/lib/utils/date'
@@ -52,15 +53,13 @@ export default async function AttendancePage({
     <div>
       <h1 className="mb-4 text-2xl font-semibold text-zinc-900">Attendance Log</h1>
 
-      <form className="mb-4 flex items-end gap-3">
+      <Form action="" className="mb-4 flex items-end gap-3">
         <div>
           <Label htmlFor="date">Date</Label>
           <Input id="date" name="date" type="date" defaultValue={selectedDate} className="w-48" />
         </div>
-        <Button type="submit" variant="secondary">
-          Filter
-        </Button>
-      </form>
+        <FilterButton>Filter</FilterButton>
+      </Form>
 
       <p className="mb-3 text-sm text-zinc-500">{formatDateLong(selectedDate)}</p>
 

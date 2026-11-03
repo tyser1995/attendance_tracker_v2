@@ -18,7 +18,8 @@ This is **Phase 1** — the core workflow. See [Not yet ported](#not-yet-ported-
 | **ID Patterns** (`/patterns`) | Define allowed ID formats using mask syntax (e.g. `##-#####-#`, `#` = digit). Scanned IDs are checked against every active pattern. |
 | **Reports** (`/reports`) | Date-range report (defaults to today). Bar chart of logs per day, per-student log counts in a paginated table (10 rows/page), CSV and PDF export. |
 | **User Management** (`/users`) | Super admin can create, edit, and delete accounts and assign roles. At least one Super Admin is always kept. |
-| **Settings** (`/settings`) | Choose the initial page (Login or public Scanner), export/restore a full JSON backup. |
+| **Logs** (`/logs`) | Super admin can monitor pages opened, buttons and links clicked, sign-ins, and errors. Kept for 90 days. |
+| **Settings** (`/settings`) | Rename the application, change the logo and browser icon, schedule automatic backups (every 24 hours, day, week, or month, at a chosen time and to a chosen folder), choose the initial page (Login or public Scanner), export/restore a full JSON backup (also accepts backups from the Flutter app), compare and merge several backups without overwriting existing data. |
 
 ## Role-Based Access
 
@@ -26,7 +27,7 @@ This is **Phase 1** — the core workflow. See [Not yet ported](#not-yet-ported-
 |---|:---:|:---:|:---:|
 | `/scanner`, `/attendance`, `/dashboard` | ✓ | ✓ | ✓ |
 | `/students`, `/courses`, `/patterns`, `/reports` | ✓ | ✓ | — |
-| `/users`, `/settings` | ✓ | — | — |
+| `/users`, `/settings`, `/logs` | ✓ | — | — |
 
 Enforced both in `proxy.ts` (route guard) and in each page/Server Action.
 

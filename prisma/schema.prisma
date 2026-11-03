@@ -99,10 +99,62 @@ model IdPattern {
   @@map("id_patterns")
 }
 
+// What signed-in users do: pages opened, controls clicked, sign-ins, and backup restores.
+// Kept for 90 days and left out of backups.
+model ActivityLog {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  username  String?
+  role      String?
+  action    String
+  path      String?
+  target    String?
+
+  @@index([createdAt])
+  @@index([username])
+  @@map("activity_logs")
+}
+
+// Errors from the server, browsers, and background jobs. Kept for 90 days and left out of backups.
+model ErrorLog {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  source    String
+  message   String
+  stack     String?
+  digest    String?
+  path      String?
+  username  String?
+
+  @@index([createdAt])
+  @@map("error_logs")
+}
+
+// Uploaded logo and browser icon. Kept out of backups, so restoring doesn't change them.
+model BrandingAsset {
+  kind      String   @id
+  mimeType  String
+  data      Bytes
+  updatedAt DateTime @updatedAt
+
+  @@map("branding_assets")
+}
+
 // Single-row app settings.
 model Settings {
   id          Int    @id @default(1)
   initialPage String @default("login")
+  appName     String @default("Attendance Tracker")
+
+  // Scheduled backups. Frequency: off, every24h, daily, weekly, monthly.
+  backupFrequency String    @default("off")
+  backupTime      String    @default("18:00")
+  backupWeekday   Int       @default(1)
+  backupMonthDay  Int       @default(1)
+  backupFolder    String?
+  nextBackupAt    DateTime?
+  lastBackupAt    DateTime?
+  lastBackupError String?
 
   @@map("settings")
 }

@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import type { Role } from '@/app/generated/prisma'
+import { NavIcon } from './NavIcon'
 import { visibleNavItems } from './navItems'
 import { cn } from '@/lib/utils/cn'
 
@@ -15,7 +16,6 @@ export function Sidebar({ role }: { role: Role }) {
       <ul className="space-y-0.5">
         {items.map((item) => {
           const active = pathname === item.href || pathname.startsWith(item.href + '/')
-          const Icon = item.icon
           return (
             <li key={item.href}>
               <Link
@@ -28,7 +28,7 @@ export function Sidebar({ role }: { role: Role }) {
                 {active && (
                   <span className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-indigo-600" />
                 )}
-                <Icon size={18} className={active ? 'text-indigo-600' : 'text-zinc-400 group-hover:text-zinc-600'} />
+                <NavIcon icon={item.icon} className={active ? 'text-indigo-600' : 'text-zinc-400 group-hover:text-zinc-600'} />
                 {item.label}
               </Link>
             </li>
