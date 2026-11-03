@@ -22,6 +22,8 @@ All notable changes to this project are listed here, newest first.
 - **Restore backups from the Flutter app.** **Restore from Backup** now converts the older Flutter format, including courses, students, attendance, and ID patterns. User accounts and settings are kept, because those backups don't contain them.
 - **Start without an editor.**
   - `start-app.bat` starts the app and opens the browser in one click. If the app is already running, it only opens the browser.
+  - Each time it starts the app, `start-app.bat` prepares the computer automatically, so a fresh clone or a `git pull` needs no manual steps. It creates `.env` and `.env.local` with a new `AUTH_SECRET`, installs packages when they've changed, applies database migrations without resetting data, and regenerates the Prisma client.
+  - Default accounts are only created in a database with no users, so a deleted default account doesn't come back.
   - `install-autostart.bat` makes the app start and open each time the user signs in to Windows.
   - `remove-autostart.bat` turns auto-start off.
 - **Compare and merge backups.** **Settings → Compare & Merge Backups** accepts several backup files at once. **Compare** reports, per file and table, what's new, what already exists, and what exists with different values, without changing anything. **Merge new records** then adds only the missing records.
@@ -52,6 +54,7 @@ All notable changes to this project are listed here, newest first.
 
 - **Restoring an unrecognized file could delete all data, including every login.** These files are now refused before anything is deleted, with the message "Unrecognized backup format. Nothing was changed."
 - **Restoring a backup with an empty user list could lock everyone out.** These files are now refused as well.
+- **The app crashed on a new computer with "table does not exist".** A cloned repo has no database, because `prisma/dev.db` is not stored in git, and nothing applied the migrations. `start-app.bat` now does this automatically.
 
 ### Security
 
@@ -62,7 +65,7 @@ All notable changes to this project are listed here, newest first.
 
 ### Upgrade notes
 
-- Five new database migrations add the application name, backup settings, logs, and branding images. Stop the app, then run `npx prisma migrate deploy` and `npm run db:generate` before starting it again. The bundled `data/demo-seed.db` already includes them.
+- Five new database migrations add the application name, backup settings, logs, and branding images. Starting the app with `start-app.bat` applies them automatically. Otherwise, stop the app, then run `npx prisma migrate deploy` and `npm run db:generate` before starting it again. The bundled `data/demo-seed.db` already includes them.
 - The migrations are written for SQLite, so they need adapting before use on Postgres.
 - Scheduled backups need a server that keeps running, so they won't run on serverless hosting such as Vercel.
 

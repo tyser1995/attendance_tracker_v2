@@ -92,6 +92,10 @@ attendance_tracker_v2/
 
 ## Getting Started
 
+**On Windows, double-click `start-app.bat`.** It creates the settings files, installs packages, sets up the database, creates the default accounts in a new database, and opens the app in your browser. The first run can take several minutes. Your data isn't stored in git, so to bring it to another computer, copy `prisma/dev.db` or use **Export Backup** and **Restore from Backup**.
+
+To set it up by hand instead, follow these steps.
+
 ### 1. Install
 
 ```bash

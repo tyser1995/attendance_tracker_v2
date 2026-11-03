@@ -12,12 +12,6 @@ if errorlevel 1 (
   exit /b 1
 )
 
-if not exist ".env.local" (
-  echo Missing .env.local. See "Getting Started" in README.md.
-  pause
-  exit /b 1
-)
-
 rem Already running: just open the browser instead of starting a second server.
 curl -s -f -o nul "%APP_URL%/login" >nul 2>nul
 if not errorlevel 1 (
@@ -25,14 +19,14 @@ if not errorlevel 1 (
   exit /b 0
 )
 
-if not exist "node_modules\" (
-  echo Installing dependencies, this only happens once...
-  call npm install
-  if errorlevel 1 (
-    echo Installing dependencies failed.
-    pause
-    exit /b 1
-  )
+rem Creates settings files, installs packages, and updates the database when needed.
+echo Preparing the app...
+node scripts\setup.js
+if errorlevel 1 (
+  echo.
+  echo The app could not be prepared. See the message above.
+  pause
+  exit /b 1
 )
 
 rem Opens the browser as soon as the server answers, for up to 2 minutes.
