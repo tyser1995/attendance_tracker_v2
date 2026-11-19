@@ -11,7 +11,7 @@ This is **Phase 1** — the core workflow. See [Not yet ported](#not-yet-ported-
 | Feature | Description |
 |---|---|
 | **Time Log** (`/scanner`) | Type or scan a student ID, press Enter. Auto-advances AM In → AM Out → PM In → PM Out each day; rejects a 5th scan for the same day. |
-| **Attendance Log** (`/attendance`) | Browse attendance records, filter by date. |
+| **Attendance Log** (`/attendance`) | Browse attendance records by date range (From/To, default today), and by source: scanned or imported. Imported logs show when and from which file they were imported. |
 | **Dashboard** (`/dashboard`) | Today's present/absent counts, AM/PM totals, attendance-rate chart. |
 | **Students** (`/students`) | Add, edit, soft-delete student profiles. Duplicate ID number is rejected. |
 | **Courses** (`/courses`) | Manage the course catalogue (code, name, year level). Duplicate course code is rejected; a course with active students can't be deleted. |
@@ -19,7 +19,7 @@ This is **Phase 1** — the core workflow. See [Not yet ported](#not-yet-ported-
 | **Reports** (`/reports`) | Date-range report (defaults to today). Bar chart of logs per day, per-student log counts in a paginated table (10 rows/page), CSV and PDF export. |
 | **User Management** (`/users`) | Super admin can create, edit, and delete accounts and assign roles. At least one Super Admin is always kept. |
 | **Logs** (`/logs`) | Super admin can monitor pages opened, buttons and links clicked, sign-ins, and errors. Kept for 90 days. |
-| **Settings** (`/settings`) | Rename the application, change the logo and browser icon, schedule automatic backups (every 24 hours, day, week, or month, at a chosen time and to a chosen folder), choose the initial page (Login or public Scanner), export/restore a full JSON backup (also accepts backups from the Flutter app), compare and merge several backups without overwriting existing data. |
+| **Settings** (`/settings`) | Rename the application, change the logo and browser icon, schedule automatic backups (every 24 hours, day, week, or month, at a chosen time and to a chosen folder), choose the initial page (Login or public Scanner), export/restore a full JSON backup (also accepts backups from the Flutter app), compare and merge several backups without overwriting existing data, and [import user accounts or time logs](#importing-user-accounts-and-time-logs) from a JSON file, skipping duplicates. |
 
 ## Role-Based Access
 
@@ -56,7 +56,7 @@ Seeded by `npm run db:seed`:
 | Forms | react-hook-form-style Server Actions + zod validation |
 | Charts | Recharts |
 | Export | jsPDF + jspdf-autotable (PDF), hand-rolled CSV |
-| Testing | Vitest (unit tests for the attendance state machine and ID-pattern regex builder) |
+| Testing | Vitest (unit tests for the attendance state machine, ID-pattern regex builder, backups, merging, and imports) |
 
 ## Project Structure
 
@@ -80,6 +80,9 @@ attendance_tracker_v2/
 │   ├── attendance/logAttendance.ts  # Ported AM/PM state machine
 │   ├── idPattern/buildRegex.ts # Mask -> regex converter
 │   ├── backup/backup.ts        # Full JSON export/import
+│   ├── backup/merge.ts         # Compare & merge backups
+│   ├── backup/importUsers.ts   # Import user accounts from JSON
+│   ├── backup/importAttendance.ts  # Import time logs from JSON
 │   └── validation/             # zod schemas
 ├── prisma/
 │   ├── schema.prisma
@@ -166,10 +169,31 @@ Each scan advances the current day's status by one; a 5th scan in the same day i
 
 ---
 
+## Importing user accounts and time logs
+
+**Settings → Import User Accounts** and **Settings → Import Time Logs** add records from a JSON file without changing what's already there. Choose a file, click **Check** to see what's new, then click **Import**. After importing, the result links to the new records.
+
+| | User accounts | Time logs |
+|---|---|---|
+| **Accepted files** | A backup from this app, `{ "users": [...] }`, or a plain list | A backup from this app or the Flutter app, `{ "attendances": [...] }`, or a plain list |
+| **Required fields** | `username`, plus `passwordHash` (bcrypt) or `password` (6+ characters, hashed on import). `role` defaults to `STAFF`. | `idNumber`, `createdDate` (YYYY-MM-DD), `status` (1–4), `timeIn` (HH:MM:SS). Statuses 2 and 4 also need `timeOut`. |
+| **Skipped as duplicates** | A username already in the database or earlier in the file, ignoring case | A log for a student, day, and session (AM or PM) that already exists or appears earlier in the file |
+
+Example time log file:
+
+```json
+[
+  { "idNumber": "21-00123-4", "createdDate": "2026-08-26", "status": 2, "timeIn": "08:31:42", "timeOut": "10:51:57" }
+]
+```
+
+Imported time logs are marked with when they were imported and from which file. To see them, open the Attendance Log, set **Source** to **Imported**, and choose a date range. Files kept in a `timelogs/` folder in the project are ignored by git.
+
+---
+
 ## Not yet ported from the Flutter app (Phase 2)
 
 - RFID/barcode, QR code, and face-recognition login methods, and the credential-assignment UI (`User.cardId` / `User.faceDescriptor` columns already exist in the schema for this)
-- Scheduled automatic backups
 - Trial mode
 - Excel export, CSV attendance import
 - Public `/presentation` slide deck

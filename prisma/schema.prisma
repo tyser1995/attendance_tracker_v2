@@ -79,11 +79,17 @@ model Attendance {
   createdDate String
   status      Int     @default(1)
 
+  // Set when the log came from a file (Import Time Logs, or Compare & Merge Backups)
+  // rather than a scan: when it was imported, and the file's name. Null for scans.
+  importedAt   DateTime?
+  importSource String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([createdDate])
   @@index([idNumber])
+  @@index([importedAt])
   @@map("attendances")
 }
 

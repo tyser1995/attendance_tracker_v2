@@ -22,6 +22,8 @@ const ACTION_LABEL: Record<string, string> = {
   logout: 'Signed out',
   backup_restore: 'Restored backup',
   backup_merge: 'Merged backup',
+  users_import: 'Imported users',
+  attendance_import: 'Imported time logs',
   branding_change: 'Changed branding',
 }
 const ACTION_COLOR: Record<string, 'zinc' | 'blue' | 'green' | 'amber' | 'indigo'> = {
@@ -32,6 +34,8 @@ const ACTION_COLOR: Record<string, 'zinc' | 'blue' | 'green' | 'amber' | 'indigo
   logout: 'zinc',
   backup_restore: 'indigo',
   backup_merge: 'indigo',
+  users_import: 'indigo',
+  attendance_import: 'indigo',
   branding_change: 'indigo',
 }
 

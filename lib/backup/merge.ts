@@ -299,8 +299,9 @@ export function planMerge(existing: ExistingData, data: BackupData): MergePlan {
 }
 
 // Compares a backup with the database and, when `apply` is true, adds the new records.
-// Nothing existing is ever updated or deleted, and a failure adds nothing from the file.
-export async function mergeBackup(prisma: PrismaClient, data: BackupData, apply: boolean): Promise<MergeResults> {
+// Added time logs are marked as imported from `source` (the file name). Nothing existing
+// is ever updated or deleted, and a failure adds nothing from the file.
+export async function mergeBackup(prisma: PrismaClient, data: BackupData, apply: boolean, source: string): Promise<MergeResults> {
   const [course, student, attendance, idPattern, user] = await Promise.all([
     prisma.course.findMany({ select: { id: true, courseCode: true, courseName: true, yearLevel: true } }),
     prisma.student.findMany({
@@ -322,7 +323,11 @@ export async function mergeBackup(prisma: PrismaClient, data: BackupData, apply:
         if (rows.course.length) await tx.course.createMany({ data: rows.course as never })
         if (rows.student.length) await tx.student.createMany({ data: rows.student as never })
         if (rows.idPattern.length) await tx.idPattern.createMany({ data: rows.idPattern as never })
-        if (rows.attendance.length) await tx.attendance.createMany({ data: rows.attendance as never })
+        if (rows.attendance.length) {
+          const importedAt = new Date()
+          const marked = rows.attendance.map((row) => ({ ...row, importedAt, importSource: source }))
+          await tx.attendance.createMany({ data: marked as never })
+        }
       },
       { timeout: 60_000 }
     )

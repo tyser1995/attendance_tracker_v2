@@ -2,6 +2,44 @@
 
 All notable changes to this project are listed here, newest first.
 
+## 2026-11-19
+
+### Added
+
+- **Import user accounts.** Super Admins can add login accounts from a JSON file under **Settings → Import User Accounts**. **Check** shows what would happen without changing anything, and **Import new accounts** then adds only the new ones.
+  - **Accepted files:** a backup from this app (only its user accounts are read), `{ "users": [...] }`, or a plain list of accounts.
+  - **Login details:** each account needs a `username` and either a `passwordHash` (as in backups) or a plain `password` of at least 6 characters, which is hashed before saving. `role` must be Super Admin, Admin, or Staff, and defaults to Staff.
+  - **Duplicates:** usernames are matched ignoring case and surrounding spaces. An account whose username is already in the database, or appears earlier in the file, is skipped. Existing accounts are never changed.
+  - **Card IDs:** a card ID already linked to another account is dropped, and the account is imported without it.
+  - Accounts with missing or invalid details are counted as invalid and not added.
+- **Import time logs.** Super Admins can add attendance time logs from a JSON file under **Settings → Import Time Logs**, with the same **Check** and import steps.
+  - **Accepted files:** a backup from this app or the Flutter app (only the time logs are read), `{ "attendances": [...] }`, or a plain list of logs.
+  - **Duplicates:** a student has at most one AM and one PM log per day, so a log is skipped when the same student already has one for that day and session, in the database or earlier in the file. Existing logs are never changed.
+  - **Required values:** a student ID number, a real date (YYYY-MM-DD), a status from 1 to 4, and a time in. AM Out and PM Out logs also need a time out. Logs that don't meet these are counted as invalid and not added.
+  - **Times:** `08:05` and `08:05:00` count as the same time.
+  - **Names and unknown students:** a missing name is filled in from the student list. A log for an unknown student ID is still imported, and the report notes it.
+  - **Time out before time in:** logs whose time out is earlier than their time in, as recorded by a device with a wrong clock, are imported as recorded and listed in the notes.
+- **Import results.** Both imports show how many entries are new, already exist, repeat in the file, or are invalid, with the reason for each skipped entry. When nothing can be added, the result says so.
+  - Before importing, **Check** shows the date range of the new time logs.
+  - After importing, a link opens the new logs in the Attendance Log, or the user list for accounts.
+  - Each import is recorded in **Logs** as "Imported users" or "Imported time logs".
+- **Date range on the Attendance Log.** The single date filter is now **From** and **To**, and both default to today. A **Date** column shows each log's day, and the summary line shows the number of records, students, and days with logs. Old `?date=` links still show that one day.
+- **Imported logs are marked.** Time logs added by **Import Time Logs** or **Compare & Merge Backups** record when they were imported and from which file.
+  - The Attendance Log has a **Source** column showing **Imported** with the import date, or **Scanned**. Hovering over **Imported** shows the file name.
+  - A **Source** filter shows all logs, only scanned logs, or only imported logs.
+- **Tests** for both imports.
+
+### Upgrade notes
+
+- One new database migration, `add_attendance_import_marker`, adds the `importedAt` and `importSource` columns to attendance. Starting the app with `start-app.bat` applies it automatically. Otherwise, stop the app, then run `npx prisma migrate deploy` and `npm run db:generate` before starting it again. The bundled `data/demo-seed.db` already includes it.
+- **Restart a running dev server after the migration.** A server started before it keeps using the old Prisma client, and the Attendance Log and Import Time Logs fail with "Unknown argument `importedAt`".
+- Logs imported or merged before this change have no import record, so they show as **Scanned**.
+
+### Security
+
+- **Time log files are excluded from git.** `/timelogs/`, a folder for keeping files to import, was added to `.gitignore`, because those files contain student data.
+- **Only Super Admins can import.** Both imports are checked by the server code as well as by the route guard.
+
 ## 2026-11-03
 
 ### Added

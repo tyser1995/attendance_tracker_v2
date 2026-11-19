@@ -10,6 +10,10 @@ import { computeFirstBackup } from '@/lib/backup/schedule'
 import { checkBackupFolder } from '@/lib/backup/scheduler'
 import { exportBackup, importBackup, parseBackup, type BackupData } from '@/lib/backup/backup'
 import { mergeBackup, type MergeResults } from '@/lib/backup/merge'
+import { extractUsers, importUsers } from '@/lib/backup/importUsers'
+import { extractAttendance, importAttendance } from '@/lib/backup/importAttendance'
+import type { ImportKind, ImportResult } from '@/lib/backup/importCommon'
+import type { PrismaClient } from '@/app/generated/prisma'
 import { logActivity, logError } from '@/lib/logs/log'
 import { MAX_BRANDING_BYTES, checkBrandingImage, isBrandingKind } from '@/lib/branding/image'
 
@@ -182,7 +186,7 @@ async function processBackupFile(formData: FormData, apply: boolean): Promise<Me
   }
 
   try {
-    const results = await mergeBackup(prisma, data, apply)
+    const results = await mergeBackup(prisma, data, apply, fileName)
     if (apply) {
       revalidatePath('/', 'layout')
       const added = results.course.new + results.student.new + results.attendance.new + results.idPattern.new
@@ -214,4 +218,78 @@ export async function compareBackupAction(formData: FormData): Promise<MergeFile
 
 export async function mergeBackupAction(formData: FormData): Promise<MergeFileResult> {
   return processBackupFile(formData, true)
+}
+
+export type ImportFileResult = { fileName: string; result?: ImportResult; error?: string }
+
+const IMPORTERS: Record<
+  ImportKind,
+  {
+    extract: (raw: unknown) => Record<string, unknown>[]
+    run: (db: PrismaClient, rows: Record<string, unknown>[], apply: boolean, source: string) => Promise<ImportResult>
+    what: string
+    action: string
+    revalidate: string
+  }
+> = {
+  users: { extract: extractUsers, run: importUsers, what: 'accounts', action: 'users_import', revalidate: '/users' },
+  attendance: {
+    extract: extractAttendance,
+    run: importAttendance,
+    what: 'time logs',
+    action: 'attendance_import',
+    revalidate: '/',
+  },
+}
+
+async function processImportFile(kind: ImportKind, formData: FormData, apply: boolean): Promise<ImportFileResult> {
+  const importer = IMPORTERS[kind]
+  const session = await auth()
+  const file = formData.get('file')
+  const fileName = file instanceof File ? file.name : 'Unknown file'
+  if (!session || !isSuperAdmin(session.user.role)) {
+    return { fileName, error: `Only a Super Admin can import ${importer.what}.` }
+  }
+  if (!(file instanceof File) || file.size === 0) return { fileName, error: 'This file is empty.' }
+
+  let rows: Record<string, unknown>[]
+  try {
+    rows = importer.extract(JSON.parse(await file.text()))
+  } catch (err) {
+    const message = err instanceof SyntaxError ? 'This file is not valid JSON.' : err instanceof Error ? err.message : String(err)
+    return { fileName, error: `${message} Nothing was added from it.` }
+  }
+
+  try {
+    const result = await importer.run(prisma, rows, apply, fileName)
+    if (apply) {
+      revalidatePath(importer.revalidate, importer.revalidate === '/' ? 'layout' : 'page')
+      await logActivity({
+        action: importer.action,
+        username: session.user.username,
+        role: session.user.role,
+        path: '/settings',
+        target: `${fileName}: ${result.new} ${importer.what} added`,
+      })
+    }
+    return { fileName, result }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    await logError({
+      source: 'backup',
+      message: `Could not import ${importer.what} from ${fileName}: ${message}`,
+      stack: err instanceof Error ? err.stack : null,
+      path: '/settings',
+      username: session.user.username,
+    })
+    return { fileName, error: 'This file could not be processed. Nothing was added from it.' }
+  }
+}
+
+export async function checkImportAction(kind: ImportKind, formData: FormData): Promise<ImportFileResult> {
+  return processImportFile(kind, formData, false)
+}
+
+export async function runImportAction(kind: ImportKind, formData: FormData): Promise<ImportFileResult> {
+  return processImportFile(kind, formData, true)
 }

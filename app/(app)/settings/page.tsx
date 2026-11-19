@@ -9,6 +9,7 @@ import { InitialPageForm } from '@/components/settings/InitialPageForm'
 import { BackupScheduleForm } from '@/components/settings/BackupScheduleForm'
 import { BackupSection } from '@/components/settings/BackupSection'
 import { MergeBackupSection } from '@/components/settings/MergeBackupSection'
+import { ImportSection } from '@/components/settings/ImportSection'
 
 function formatRun(date: Date | null | undefined): string {
   return date ? date.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : '—'
@@ -102,6 +103,43 @@ export default async function SettingsPage() {
         </CardHeader>
         <CardBody>
           <MergeBackupSection />
+        </CardBody>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <h2 className="font-medium text-zinc-900">Import User Accounts</h2>
+        </CardHeader>
+        <CardBody>
+          <ImportSection
+            kind="users"
+            intro="Add login accounts from a backup or a JSON list of users. Only user accounts are read from the file. Usernames that already exist (ignoring case) or repeat in the file are skipped, and existing accounts are never changed."
+            help={
+              <>
+                Each account needs a <code>username</code> and either a <code>passwordHash</code> (as in backups) or a plain{' '}
+                <code>password</code> of at least 6 characters. <code>role</code> defaults to STAFF.
+              </>
+            }
+          />
+        </CardBody>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <h2 className="font-medium text-zinc-900">Import Time Logs</h2>
+        </CardHeader>
+        <CardBody>
+          <ImportSection
+            kind="attendance"
+            intro="Add attendance time logs from a backup (this app or the Flutter app) or a JSON list of logs. Only time logs are read from the file. A student can have one AM and one PM log per day, so a log for a day and session that already exists, or repeats in the file, is skipped. Existing logs are never changed."
+            help={
+              <>
+                Each log needs <code>idNumber</code>, <code>createdDate</code> (YYYY-MM-DD), <code>status</code> (1 AM in, 2 AM
+                out, 3 PM in, 4 PM out) and <code>timeIn</code> (HH:MM:SS). Statuses 2 and 4 also need a <code>timeOut</code>.
+                A missing <code>name</code> is filled in from the student list.
+              </>
+            }
+          />
         </CardBody>
       </Card>
     </div>
