@@ -11,7 +11,8 @@ import { checkBackupFolder } from '@/lib/backup/scheduler'
 import { exportBackup, importBackup, parseBackup, type BackupData } from '@/lib/backup/backup'
 import { mergeBackup, type MergeResults } from '@/lib/backup/merge'
 import { extractUsers, importUsers } from '@/lib/backup/importUsers'
-import { extractAttendance, importAttendance } from '@/lib/backup/importAttendance'
+import { importAttendance, readAttendanceFile } from '@/lib/backup/importAttendance'
+import { decodeText } from '@/lib/backup/csv'
 import type { ImportKind, ImportResult } from '@/lib/backup/importCommon'
 import type { PrismaClient } from '@/app/generated/prisma'
 import { logActivity, logError } from '@/lib/logs/log'
@@ -225,16 +226,17 @@ export type ImportFileResult = { fileName: string; result?: ImportResult; error?
 const IMPORTERS: Record<
   ImportKind,
   {
-    extract: (raw: unknown) => Record<string, unknown>[]
+    // Turns the uploaded file's text into rows, or throws with a message for the user.
+    read: (text: string) => Record<string, unknown>[]
     run: (db: PrismaClient, rows: Record<string, unknown>[], apply: boolean, source: string) => Promise<ImportResult>
     what: string
     action: string
     revalidate: string
   }
 > = {
-  users: { extract: extractUsers, run: importUsers, what: 'accounts', action: 'users_import', revalidate: '/users' },
+  users: { read: (text) => extractUsers(JSON.parse(text)), run: importUsers, what: 'accounts', action: 'users_import', revalidate: '/users' },
   attendance: {
-    extract: extractAttendance,
+    read: readAttendanceFile,
     run: importAttendance,
     what: 'time logs',
     action: 'attendance_import',
@@ -254,7 +256,7 @@ async function processImportFile(kind: ImportKind, formData: FormData, apply: bo
 
   let rows: Record<string, unknown>[]
   try {
-    rows = importer.extract(JSON.parse(await file.text()))
+    rows = importer.read(decodeText(await file.arrayBuffer()))
   } catch (err) {
     const message = err instanceof SyntaxError ? 'This file is not valid JSON.' : err instanceof Error ? err.message : String(err)
     return { fileName, error: `${message} Nothing was added from it.` }
@@ -269,7 +271,7 @@ async function processImportFile(kind: ImportKind, formData: FormData, apply: bo
         username: session.user.username,
         role: session.user.role,
         path: '/settings',
-        target: `${fileName}: ${result.new} ${importer.what} added`,
+        target: `${fileName}: ${result.new} ${importer.what} added${result.students?.new ? `, ${result.students.new} students added` : ''}`,
       })
     }
     return { fileName, result }

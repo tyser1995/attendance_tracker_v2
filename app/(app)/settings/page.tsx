@@ -11,6 +11,10 @@ import { BackupSection } from '@/components/settings/BackupSection'
 import { MergeBackupSection } from '@/components/settings/MergeBackupSection'
 import { ImportSection } from '@/components/settings/ImportSection'
 
+// Hidden from Settings for now. The features still work; set these to true to show them again.
+const SHOW_MERGE_BACKUPS = false
+const SHOW_IMPORT_USERS = false
+
 function formatRun(date: Date | null | undefined): string {
   return date ? date.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : '—'
 }
@@ -97,32 +101,36 @@ export default async function SettingsPage() {
         </CardBody>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <h2 className="font-medium text-zinc-900">Compare &amp; Merge Backups</h2>
-        </CardHeader>
-        <CardBody>
-          <MergeBackupSection />
-        </CardBody>
-      </Card>
+      {SHOW_MERGE_BACKUPS && (
+        <Card>
+          <CardHeader>
+            <h2 className="font-medium text-zinc-900">Compare &amp; Merge Backups</h2>
+          </CardHeader>
+          <CardBody>
+            <MergeBackupSection />
+          </CardBody>
+        </Card>
+      )}
 
-      <Card>
-        <CardHeader>
-          <h2 className="font-medium text-zinc-900">Import User Accounts</h2>
-        </CardHeader>
-        <CardBody>
-          <ImportSection
-            kind="users"
-            intro="Add login accounts from a backup or a JSON list of users. Only user accounts are read from the file. Usernames that already exist (ignoring case) or repeat in the file are skipped, and existing accounts are never changed."
-            help={
-              <>
-                Each account needs a <code>username</code> and either a <code>passwordHash</code> (as in backups) or a plain{' '}
-                <code>password</code> of at least 6 characters. <code>role</code> defaults to STAFF.
-              </>
-            }
-          />
-        </CardBody>
-      </Card>
+      {SHOW_IMPORT_USERS && (
+        <Card>
+          <CardHeader>
+            <h2 className="font-medium text-zinc-900">Import User Accounts</h2>
+          </CardHeader>
+          <CardBody>
+            <ImportSection
+              kind="users"
+              intro="Add login accounts from a backup or a JSON list of users. Only user accounts are read from the file. Usernames that already exist (ignoring case) or repeat in the file are skipped, and existing accounts are never changed."
+              help={
+                <>
+                  Each account needs a <code>username</code> and either a <code>passwordHash</code> (as in backups) or a plain{' '}
+                  <code>password</code> of at least 6 characters. <code>role</code> defaults to STAFF.
+                </>
+              }
+            />
+          </CardBody>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
@@ -131,12 +139,18 @@ export default async function SettingsPage() {
         <CardBody>
           <ImportSection
             kind="attendance"
-            intro="Add attendance time logs from a backup (this app or the Flutter app) or a JSON list of logs. Only time logs are read from the file. A student can have one AM and one PM log per day, so a log for a day and session that already exists, or repeats in the file, is skipped. Existing logs are never changed."
+            intro="Add attendance time logs from a backup (this app or the Flutter app), a JSON list of logs, or a CSV exported from Reports. Only time logs are read from the file. A student can have one AM and one PM log per day, so a log for a day and session that already exists, or repeats in the file, is skipped. Existing logs are never changed."
             help={
               <>
-                Each log needs <code>idNumber</code>, <code>createdDate</code> (YYYY-MM-DD), <code>status</code> (1 AM in, 2 AM
-                out, 3 PM in, 4 PM out) and <code>timeIn</code> (HH:MM:SS). Statuses 2 and 4 also need a <code>timeOut</code>.
-                A missing <code>name</code> is filled in from the student list.
+                <strong className="font-medium text-zinc-600">CSV:</strong> needs the columns Date, Student ID, Status (e.g. AM
+                Time In) and Time In, as in a Reports export. Name and Time Out are used when present; other columns, such as
+                Course and Year, are ignored.
+                <br />
+                <strong className="font-medium text-zinc-600">JSON:</strong> each log needs <code>idNumber</code>,{' '}
+                <code>createdDate</code> (YYYY-MM-DD), <code>status</code> (1 AM in, 2 AM out, 3 PM in, 4 PM out) and{' '}
+                <code>timeIn</code> (HH:MM:SS).
+                <br />
+                AM Out and PM Out logs also need a time out. A missing name is filled in from the student list.
               </>
             }
           />

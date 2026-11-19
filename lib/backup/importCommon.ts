@@ -8,6 +8,13 @@ export type ImportResult = {
   invalid: number // Missing or malformed values; never added.
   examples: string[] // A few of the skipped records and why, for the report.
   dateRange?: { from: string; to: string } // Time logs only: the first and last day of the new logs.
+  students?: StudentImportSummary // Time logs only: students added for IDs not in the student list.
+}
+
+export type StudentImportSummary = {
+  new: number // Not in the student list; added when importing.
+  skipped: number // Not added: no name in the file, or the same name already has another ID.
+  examples: string[]
 }
 
 export type ImportKind = 'users' | 'attendance'

@@ -19,7 +19,7 @@ This is **Phase 1** — the core workflow. See [Not yet ported](#not-yet-ported-
 | **Reports** (`/reports`) | Date-range report (defaults to today). Bar chart of logs per day, per-student log counts in a paginated table (10 rows/page), CSV and PDF export. |
 | **User Management** (`/users`) | Super admin can create, edit, and delete accounts and assign roles. At least one Super Admin is always kept. |
 | **Logs** (`/logs`) | Super admin can monitor pages opened, buttons and links clicked, sign-ins, and errors. Kept for 90 days. |
-| **Settings** (`/settings`) | Rename the application, change the logo and browser icon, schedule automatic backups (every 24 hours, day, week, or month, at a chosen time and to a chosen folder), choose the initial page (Login or public Scanner), export/restore a full JSON backup (also accepts backups from the Flutter app), compare and merge several backups without overwriting existing data, and [import user accounts or time logs](#importing-user-accounts-and-time-logs) from a JSON file, skipping duplicates. |
+| **Settings** (`/settings`) | Rename the application, change the logo and browser icon, schedule automatic backups (every 24 hours, day, week, or month, at a chosen time and to a chosen folder), choose the initial page (Login or public Scanner), export/restore a full JSON backup (also accepts backups from the Flutter app), and [import time logs](#importing-user-accounts-and-time-logs) from a Reports CSV or JSON file, skipping duplicates and adding missing students. Comparing and merging backups and importing user accounts are available but currently hidden. |
 
 ## Role-Based Access
 
@@ -82,7 +82,9 @@ attendance_tracker_v2/
 │   ├── backup/backup.ts        # Full JSON export/import
 │   ├── backup/merge.ts         # Compare & merge backups
 │   ├── backup/importUsers.ts   # Import user accounts from JSON
-│   ├── backup/importAttendance.ts  # Import time logs from JSON
+│   ├── backup/importAttendance.ts  # Import time logs (JSON or CSV), adding missing students
+│   ├── backup/csv.ts           # CSV reader and file encoding detection
+│   ├── students/parseName.ts   # Split full names into first, middle, last
 │   └── validation/             # zod schemas
 ├── prisma/
 │   ├── schema.prisma
@@ -171,15 +173,41 @@ Each scan advances the current day's status by one; a 5th scan in the same day i
 
 ## Importing user accounts and time logs
 
-**Settings → Import User Accounts** and **Settings → Import Time Logs** add records from a JSON file without changing what's already there. Choose a file, click **Check** to see what's new, then click **Import**. After importing, the result links to the new records.
+**Settings → Import Time Logs** and **Settings → Import User Accounts** add records from a file without changing what's already there. Choose a file, click **Check** to see what's new, then click **Import**. After importing, the result links to the new records.
 
-| | User accounts | Time logs |
+> **Import User Accounts** and **Compare & Merge Backups** are currently hidden from Settings. They still work; to show them, set `SHOW_IMPORT_USERS` or `SHOW_MERGE_BACKUPS` to `true` in `app/(app)/settings/page.tsx`.
+
+| | Time logs | User accounts |
 |---|---|---|
-| **Accepted files** | A backup from this app, `{ "users": [...] }`, or a plain list | A backup from this app or the Flutter app, `{ "attendances": [...] }`, or a plain list |
-| **Required fields** | `username`, plus `passwordHash` (bcrypt) or `password` (6+ characters, hashed on import). `role` defaults to `STAFF`. | `idNumber`, `createdDate` (YYYY-MM-DD), `status` (1–4), `timeIn` (HH:MM:SS). Statuses 2 and 4 also need `timeOut`. |
-| **Skipped as duplicates** | A username already in the database or earlier in the file, ignoring case | A log for a student, day, and session (AM or PM) that already exists or appears earlier in the file |
+| **Accepted files** | A CSV exported from **Reports** (this app or the Flutter app), a backup from this app or the Flutter app, `{ "attendances": [...] }`, or a plain list | A backup from this app, `{ "users": [...] }`, or a plain list |
+| **Required fields** | CSV: `Date`, `Student ID`, `Status`, `Time In` columns. JSON: `idNumber`, `createdDate` (YYYY-MM-DD), `status` (1–4), `timeIn` (HH:MM:SS). AM Out and PM Out logs also need a time out. | `username`, plus `passwordHash` (bcrypt) or `password` (6+ characters, hashed on import). `role` defaults to `STAFF`. |
+| **Skipped as duplicates** | A log for a student, day, and session (AM or PM) that already exists or appears earlier in the file | A username already in the database or earlier in the file, ignoring case |
 
-Example time log file:
+### Time logs from a CSV
+
+Columns are matched by header name in any order, so both Reports exports work:
+
+```csv
+Date,Student ID,Student Name,Status,Time In,Time Out
+2026-10-28,KAG02152005,"Kiny A. Gonzales",AM Time Out,08:39:42,11:02:09
+2026-10-29,DSC01212008,"Derence S. Contreras",AM Time In,14:15:18,
+```
+
+- **Status** can be a label (`AM Time In`, `AM Time Out`, `PM Time In`, `PM Time Out`) or a number 1–4.
+- **Name** (or **Student Name**), **Time Out**, **Course**, and **Year** are used when present. Other columns are ignored.
+- **Dates and times re-saved by a spreadsheet app**, such as `10/29/2026` or `2:15:18 PM`, are converted.
+- **Encoding:** UTF-8 and Excel's default Windows-1252 are both read correctly, so names like *Cañal* keep their ñ.
+
+### New students from imported logs
+
+A student ID that has a valid log in the file but isn't in the student list is added as a student when you click **Import**. **Check** shows how many would be added or skipped first.
+
+- **Name splitting:** the full name is split into first, middle, and last name, for example `MJ Strong C. Palacios` → *MJ Strong* / *C.* / *Palacios*, or `Mary Ann G Delos Reyes` → *Mary Ann* / *G.* / *Delos Reyes*. Surnames like *Dela Cruz* stay together, *Jr.* stays with the last name, `Last, First M.` order is handled, and ALL-CAPS names are converted to normal capitals.
+- **Names without a middle initial** are a best guess. Three words become a two-word first name and a last name, and with four or more words, the second-to-last is the middle name.
+- **Duplicates:** each ID is added once, and deleted students count as existing. Someone isn't added if a student with the same first name, middle initial, and last name already exists under another ID, which usually means the ID was mistyped. They appear under **Show skipped records and notes**, and their logs are still imported under the file's ID.
+- **Course:** with a Course column, the student is linked to that course by code. A missing course is created, using the code as its name.
+
+Example JSON time log file:
 
 ```json
 [
@@ -195,7 +223,7 @@ Imported time logs are marked with when they were imported and from which file. 
 
 - RFID/barcode, QR code, and face-recognition login methods, and the credential-assignment UI (`User.cardId` / `User.faceDescriptor` columns already exist in the schema for this)
 - Trial mode
-- Excel export, CSV attendance import
+- Excel export
 - Public `/presentation` slide deck
 - In-app runtime database backend switching (this version fixes the backend at deploy time via `DATABASE_URL` instead)
 

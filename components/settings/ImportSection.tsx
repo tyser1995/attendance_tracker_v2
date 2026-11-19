@@ -9,9 +9,9 @@ import { Input, Label } from '@/components/ui/Input'
 
 const MAX_FILE_BYTES = 9.5 * 1024 * 1024
 
-const TEXT: Record<ImportKind, { what: string; fileLabel: string }> = {
-  users: { what: 'user accounts', fileLabel: 'Users file (.json)' },
-  attendance: { what: 'time logs', fileLabel: 'Time logs file (.json)' },
+const TEXT: Record<ImportKind, { what: string; fileLabel: string; accept: string }> = {
+  users: { what: 'user accounts', fileLabel: 'Users file (.json)', accept: 'application/json,.json' },
+  attendance: { what: 'time logs', fileLabel: 'Time logs file (.json or .csv)', accept: 'application/json,.json,text/csv,.csv' },
 }
 
 type Mode = 'check' | 'import'
@@ -26,7 +26,7 @@ function viewHref(kind: ImportKind, result: ImportResult): string {
 // Check-then-import for one kind of record from a JSON file. Duplicates are skipped and
 // existing records are never changed; the server does all the validation.
 export function ImportSection({ kind, intro, help }: { kind: ImportKind; intro: ReactNode; help: ReactNode }) {
-  const { what, fileLabel } = TEXT[kind]
+  const { what, fileLabel, accept } = TEXT[kind]
   const [file, setFile] = useState<File | null>(null)
   const [result, setResult] = useState<ImportFileResult | null>(null)
   const [resultMode, setResultMode] = useState<Mode | null>(null)
@@ -56,7 +56,8 @@ export function ImportSection({ kind, intro, help }: { kind: ImportKind; intro: 
   }
 
   const summary = result?.result
-  const canImport = resultMode === 'check' && Boolean(summary?.new)
+  const newStudents = summary?.students?.new ?? 0
+  const canImport = resultMode === 'check' && Boolean(summary?.new || newStudents)
   const inputId = `${kind}ImportFile`
 
   return (
@@ -68,7 +69,7 @@ export function ImportSection({ kind, intro, help }: { kind: ImportKind; intro: 
         <Input
           id={inputId}
           type="file"
-          accept="application/json"
+          accept={accept}
           onChange={(e) => {
             setFile(e.target.files?.[0] ?? null)
             setResult(null)
@@ -108,13 +109,30 @@ export function ImportSection({ kind, intro, help }: { kind: ImportKind; intro: 
                   </div>
                 ))}
               </dl>
-              <p className={`border-t border-zinc-100 px-4 py-2.5 text-sm ${summary.new ? 'text-zinc-700' : 'text-amber-700'}`}>
+              {summary.students && (summary.students.new > 0 || summary.students.skipped > 0) && (
+                <p className="border-t border-zinc-100 px-4 py-2.5 text-sm text-zinc-700">
+                  <span className="text-zinc-500">Students not in the student list: </span>
+                  {summary.students.new} {resultMode === 'import' ? 'added' : 'to add'}
+                  {summary.students.skipped > 0 && `, ${summary.students.skipped} not added (see notes)`}
+                  {resultMode === 'import' && summary.students.new > 0 && (
+                    <>
+                      {' '}
+                      <Link href="/students" className="font-medium text-indigo-600 hover:underline">
+                        View students
+                      </Link>
+                    </>
+                  )}
+                </p>
+              )}
+              <p
+                className={`border-t border-zinc-100 px-4 py-2.5 text-sm ${summary.new || newStudents ? 'text-zinc-700' : 'text-amber-700'}`}
+              >
                 {resultMode === 'import'
                   ? `Added ${summary.new} new ${what}.`
-                  : summary.new
+                  : summary.new || newStudents
                     ? `${summary.new} new ${what} can be imported${
                         summary.dateRange ? ` (${summary.dateRange.from} to ${summary.dateRange.to})` : ''
-                      }. Click "Import new ${what}" to add them.`
+                      }${newStudents ? `, and ${newStudents} new students` : ''}. Click "Import new ${what}" to add them.`
                     : `Nothing to import: every entry in this file already exists or is invalid.`}
                 {resultMode === 'import' && summary.new > 0 && (
                   <>
@@ -125,10 +143,13 @@ export function ImportSection({ kind, intro, help }: { kind: ImportKind; intro: 
                   </>
                 )}
               </p>
-              {summary.examples.length > 0 && (
+              {summary.examples.length + (summary.students?.examples.length ?? 0) > 0 && (
                 <details className="border-t border-zinc-100 px-4 py-2.5 text-sm">
                   <summary className="cursor-pointer text-zinc-600">Show skipped records and notes</summary>
                   <ul className="mt-2 space-y-1 text-xs text-zinc-600">
+                    {summary.students?.examples.map((example, index) => (
+                      <li key={`student-${index}`}>Students: {example}</li>
+                    ))}
                     {summary.examples.map((example, index) => (
                       <li key={index}>{example}</li>
                     ))}

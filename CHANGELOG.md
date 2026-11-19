@@ -6,28 +6,45 @@ All notable changes to this project are listed here, newest first.
 
 ### Added
 
-- **Import user accounts.** Super Admins can add login accounts from a JSON file under **Settings → Import User Accounts**. **Check** shows what would happen without changing anything, and **Import new accounts** then adds only the new ones.
+- **Import user accounts.** Super Admins can add login accounts from a JSON file under **Settings → Import User Accounts**. **Check** shows what would happen without changing anything, and **Import new accounts** then adds only the new ones. This section is currently hidden; see **Changed**.
   - **Accepted files:** a backup from this app (only its user accounts are read), `{ "users": [...] }`, or a plain list of accounts.
   - **Login details:** each account needs a `username` and either a `passwordHash` (as in backups) or a plain `password` of at least 6 characters, which is hashed before saving. `role` must be Super Admin, Admin, or Staff, and defaults to Staff.
   - **Duplicates:** usernames are matched ignoring case and surrounding spaces. An account whose username is already in the database, or appears earlier in the file, is skipped. Existing accounts are never changed.
   - **Card IDs:** a card ID already linked to another account is dropped, and the account is imported without it.
   - Accounts with missing or invalid details are counted as invalid and not added.
-- **Import time logs.** Super Admins can add attendance time logs from a JSON file under **Settings → Import Time Logs**, with the same **Check** and import steps.
-  - **Accepted files:** a backup from this app or the Flutter app (only the time logs are read), `{ "attendances": [...] }`, or a plain list of logs.
+- **Import time logs.** Super Admins can add attendance time logs from a JSON or CSV file under **Settings → Import Time Logs**, with the same **Check** and import steps.
+  - **Accepted files:** a CSV exported from **Reports** (this app's or the Flutter app's), a backup from this app or the Flutter app (only the time logs are read), `{ "attendances": [...] }`, or a plain list of logs.
+  - **CSV columns** are found by their header names, in any order. Date, Student ID, Status, and Time In are required. Name (or Student Name), Time Out, Course, and Year are used when present, and other columns are ignored. A file missing a required column is refused with a message naming it.
+  - **CSV values:** statuses can be labels such as "AM Time In" or numbers 1 to 4. Dates and times rewritten by a spreadsheet app, such as `10/29/2026` and `2:15:18 PM`, are converted. Quoted names containing commas are read correctly.
+  - **Encoding:** files are read as UTF-8, or as Windows-1252 (Excel's default when saving CSV) when they aren't valid UTF-8, so names such as Cañal keep their ñ.
   - **Duplicates:** a student has at most one AM and one PM log per day, so a log is skipped when the same student already has one for that day and session, in the database or earlier in the file. Existing logs are never changed.
   - **Required values:** a student ID number, a real date (YYYY-MM-DD), a status from 1 to 4, and a time in. AM Out and PM Out logs also need a time out. Logs that don't meet these are counted as invalid and not added.
   - **Times:** `08:05` and `08:05:00` count as the same time.
-  - **Names and unknown students:** a missing name is filled in from the student list. A log for an unknown student ID is still imported, and the report notes it.
+  - **Names:** a missing name is filled in from the student list.
+  - **New students:** a student ID with a valid log in the file but not in the student list is added as a student, and its logs are imported either way.
+    - **Name splitting:** the full name is split into first, middle, and last name. A middle initial becomes the middle name, with a dot added. Surnames such as "Dela Cruz" stay together, suffixes such as "Jr." stay with the last name, "Last, First M." order is handled, and ALL-CAPS names are converted to normal capitals.
+    - **Names without a middle initial:** these can't be split for certain. Three words become a two-word first name and a last name, and with four or more words, the second-to-last becomes the middle name.
+    - **Duplicates:** each ID is added once, and deleted students count as existing. A person isn't added if another student already has the same first name, middle initial, and last name under a different ID, which usually means a mistyped ID. They're listed in the notes to check.
+    - **Courses:** when the file has a Course column, the student is linked to that course by code. A course that doesn't exist is added, using its code as its name and the Year column as its year level.
+    - Students are added only by **Import**, in the same step as the logs. **Check** shows how many would be added or skipped.
   - **Time out before time in:** logs whose time out is earlier than their time in, as recorded by a device with a wrong clock, are imported as recorded and listed in the notes.
 - **Import results.** Both imports show how many entries are new, already exist, repeat in the file, or are invalid, with the reason for each skipped entry. When nothing can be added, the result says so.
   - Before importing, **Check** shows the date range of the new time logs.
-  - After importing, a link opens the new logs in the Attendance Log, or the user list for accounts.
-  - Each import is recorded in **Logs** as "Imported users" or "Imported time logs".
+  - After importing, a link opens the new logs in the Attendance Log, or the user list for accounts. A **View students** link appears when students were added.
+  - Each import is recorded in **Logs** as "Imported users" or "Imported time logs", with the number of students added.
 - **Date range on the Attendance Log.** The single date filter is now **From** and **To**, and both default to today. A **Date** column shows each log's day, and the summary line shows the number of records, students, and days with logs. Old `?date=` links still show that one day.
 - **Imported logs are marked.** Time logs added by **Import Time Logs** or **Compare & Merge Backups** record when they were imported and from which file.
   - The Attendance Log has a **Source** column showing **Imported** with the import date, or **Scanned**. Hovering over **Imported** shows the file name.
   - A **Source** filter shows all logs, only scanned logs, or only imported logs.
-- **Tests** for both imports.
+- **Tests** for both imports, CSV reading, and name splitting.
+
+### Changed
+
+- **Compare & Merge Backups and Import User Accounts are hidden** from the Settings page. They still work. To show them again, set `SHOW_MERGE_BACKUPS` or `SHOW_IMPORT_USERS` to `true` in `app/(app)/settings/page.tsx`.
+
+### Fixed
+
+- **Browser extensions caused a hydration warning in development.** Extensions such as Grammarly add attributes to the page's `<body>` before the app loads, which React reported as a mismatch. Those differences on `<body>` are now ignored; mismatches anywhere else are still reported.
 
 ### Upgrade notes
 
